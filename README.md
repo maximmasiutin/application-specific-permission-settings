@@ -1,10 +1,10 @@
 # application-specific-permission-settings.ps1 
 
 This script modifies registry key permissions to prevent errors or warning caused by the Microsoft-Windows-DistributedCOM.  
-It is based on FixDCOMErrors.ps1 from https://cloud.gci.org/files/FixDCOMErrors.ps1 by https://github.com/bret-miller - see https://gist.github.com/kitmenke/3213d58ffd60ae9873ca466f143945f4?permalink_comment_id=2709788#gistcomment-2709788  
-which in turn is based on finderrors.ps1 and fixerrors.ps1 from https://gist.github.com/kitmenke/3213d58ffd60ae9873ca466f143945f4 by https://github.com/kitmenke  
+It is based on `FixDCOMErrors.ps1` from https://cloud.gci.org/files/FixDCOMErrors.ps1 by https://github.com/bret-miller - see https://gist.github.com/kitmenke/3213d58ffd60ae9873ca466f143945f4?permalink_comment_id=2709788#gistcomment-2709788  
+which in turn is based on `finderrors.ps1` and `fixerrors.ps1` from https://gist.github.com/kitmenke/3213d58ffd60ae9873ca466f143945f4 by https://github.com/kitmenke  
 
-Copyright (C) 2024 Maxim Masiutin. All rights reserved.
+Copyright &copy; 2024 Maxim Masiutin. All rights reserved.
 
 Copyright the contributors above mentioned: kitmenke, bret-miller.
 
