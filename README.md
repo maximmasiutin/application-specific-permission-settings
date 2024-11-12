@@ -4,8 +4,12 @@ This script modifies registry key permissions to prevent errors or warning cause
 It is based on `FixDCOMErrors.ps1` from https://cloud.gci.org/files/FixDCOMErrors.ps1 by https://github.com/bret-miller - see https://gist.github.com/kitmenke/3213d58ffd60ae9873ca466f143945f4?permalink_comment_id=2709788#gistcomment-2709788  
 which in turn is based on `finderrors.ps1` and `fixerrors.ps1` from https://gist.github.com/kitmenke/3213d58ffd60ae9873ca466f143945f4 by https://github.com/kitmenke  
 
-Copyright &copy; 2024 Maxim Masiutin. All rights reserved.  
+Copyright &copy; 2024 Maxim Masiutin. All rights reserved. email: maxim@masiutin.com. https://github.com/maximmasiutin/  
 Copyright &copy; the contributors above mentioned: kitmenke, bret-miller.
+
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 This script searches Event log for the errors such as the following and adjusts the permissions.
 

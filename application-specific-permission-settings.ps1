@@ -4,11 +4,15 @@
 
 # This script searches Event log for the errors such as the following and adjusts the permissions.
 
-# A sample event is:
+# A sample Event text is:
 # The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID {2593F8B9-4EAF-457C-B68A-50F6B8EA6B54} and APPID {15C20B67-12E7-4BB6-92BB-7AFF07997402} to the user Computer\User SID (S-1-1-12-12345678-123456789-123456789-1234) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool.
 
-# Copyright (C) 2024 Maxim Masiutin. All rights reserved.
+# Copyright (C) 2024 Maxim Masiutin. All rights reserved. email: maxim@masiutin.com. https://github.com/maximmasiutin/
 # Copyright the contributors above mentioned: kitmenke, bret-miller.
+
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or any later version.
+
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 
 # ************************* BEGIN enable-privilege
