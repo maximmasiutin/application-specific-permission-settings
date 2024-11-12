@@ -1,0 +1,55 @@
+# application-specific-permission-settings.ps1 
+
+This script modifies registry key permissions to prevent errors or warning caused by the Microsoft-Windows-DistributedCOM.
+It is based on FixDCOMErrors.ps1 from https://cloud.gci.org/files/FixDCOMErrors.ps1 by https://github.com/bret-miller - see https://gist.github.com/kitmenke/3213d58ffd60ae9873ca466f143945f4?permalink_comment_id=2709788#gistcomment-2709788
+which in turn is based on finderrors.ps1 and fixerrors.ps1 from https://gist.github.com/kitmenke/3213d58ffd60ae9873ca466f143945f4 by https://github.com/kitmenke
+
+Copyright (C) 2024 Maxim Masiutin. All rights reserved.
+
+Copyright the contributors above mentioned: kitmenke, bret-miller.
+
+This script searches Event log for the errors such as the following and adjusts the permissions.
+
+A sample Event is:
+```
+The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID 
+{2593F8B9-4EAF-457C-B68A-50F6B8EA6B54}
+ and APPID 
+{15C20B67-12E7-4BB6-92BB-7AFF07997402}
+ to the user Computer\User SID (S-1-1-12-12345678-123456789-123456789-1234) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool.
+```
+
+The XML View of the sample Event is:
+```
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+ <System>
+  <Provider Name="Microsoft-Windows-DistributedCOM" Guid="{1B562E86-B7AA-4131-BADC-B6F3A001407E}" EventSourceName="DCOM" /> 
+  <EventID Qualifiers="0">10016</EventID> 
+  <Version>0</Version> 
+  <Level>3</Level> 
+  <Task>0</Task> 
+  <Opcode>0</Opcode> 
+  <Keywords>0x8080000000000000</Keywords> 
+  <TimeCreated SystemTime="2024-11-12T11:11:28.7855692Z" /> 
+  <EventRecordID>6593</EventRecordID> 
+  <Correlation ActivityID="{982b49f4-349b-0006-79b6-2f989b34db01}" /> 
+  <Execution ProcessID="1824" ThreadID="21844" /> 
+  <Channel>System</Channel> 
+  <Computer>Computer</Computer> 
+  <Security UserID="S-1-1-12-12345678-123456789-123456789-1234" /> 
+ </System>
+ <EventData>
+  <Data Name="param1">application-specific</Data> 
+  <Data Name="param2">Local</Data> 
+  <Data Name="param3">Activation</Data> 
+  <Data Name="param4">{2593F8B9-4EAF-457C-B68A-50F6B8EA6B54}</Data> 
+  <Data Name="param5">{15C20B67-12E7-4BB6-92BB-7AFF07997402}</Data> 
+  <Data Name="param6">Computer</Data> 
+  <Data Name="param7">User</Data> 
+  <Data Name="param8">S-1-1-12-12345678-123456789-123456789-1234</Data> 
+  <Data Name="param9">LocalHost (Using LRPC)</Data> 
+  <Data Name="param10">Unavailable</Data> 
+  <Data Name="param11">Unavailable</Data> 
+ </EventData>
+</Event>
+```
