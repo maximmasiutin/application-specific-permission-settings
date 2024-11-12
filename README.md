@@ -11,7 +11,8 @@ This program is free software; you can redistribute it and/or modify it under th
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-This script searches Event log for the errors such as the following and adjusts the permissions.
+
+This program searches Event log for the errors such as the following and adjusts the permissions.
 
 A sample Event is:
 ```
