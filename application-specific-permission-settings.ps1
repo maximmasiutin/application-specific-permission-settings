@@ -101,7 +101,7 @@ $dcomissues = @{}
 $EVT_MSG = "The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID"
 
 # Search for System event log ERROR(2) or WARNING(3) entries starting with the specified EVT_MSG
-Get-WinEvent -FilterHashTable @{LogName = 'System'; Level = @(20, 30) } | Where-Object { $_.Message -like "$EVT_MSG*" } | ForEach-Object {
+Get-WinEvent -FilterHashTable @{LogName = 'System'; Level = @(2, 3) } | Where-Object { $_.Message -like "$EVT_MSG*" } | ForEach-Object {
     # Get CLSID and APPID from the event log entry
     # which we'll use to look up keys in the registry
     $CLSID = $_.Properties[3].Value
