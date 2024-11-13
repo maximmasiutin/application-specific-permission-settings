@@ -149,7 +149,29 @@ foreach ($CLSID in $dcomissues.keys) {
             $acl = $key.GetAccessControl()
             $acl.SetOwner($admin)
             $key.SetAccessControl($acl)
+
+
+	    $fullControl = [System.Security.AccessControl.RegistryRights]::FullControl
+            $allow = [System.Security.AccessControl.AccessControlType]::Allow
+	    $inheritance = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+            $propagation = [System.Security.AccessControl.PropagationFlags]::None
+
+            Write-Host "Setting Full Control access for $($admin.Value)..."
+            $user = [System.Security.Principal.NTAccount]($admin.value)
+            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($user,$fullControl,$inheritance,$propagation, $allow)
+            $acl.SetAccessRule($rule)
+            $key.SetAccessControl($acl)
+
+
+            $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            Write-Host "Setting Full Control access for $me..."
+            $user = [System.Security.Principal.NTAccount]($me)
+            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($user,$fullControl,$inheritance,$propagation, $allow)
+            $acl.SetAccessRule($rule)
+            $key.SetAccessControl($acl)
+
             $key.Close()
+
             Write-Host "Success."
         }
     }
