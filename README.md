@@ -23,6 +23,15 @@ The application-specific permission settings do not grant Local Activation permi
  to the user Computer\User SID (S-1-1-12-12345678-123456789-123456789-1234) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool.
 ```
 
+Another sample Event is:
+```
+The machine-default permission settings do not grant Local Activation permission for the COM Server application with CLSID 
+{C2F03A33-21F5-47FA-B4BB-156362A2F239}
+ and APPID 
+{316CDED5-E4AE-4B15-9113-7055D84DCC97}
+ to the user NT AUTHORITY\LOCAL SERVICE SID (S-1-5-19) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool.
+```
+
 The XML View of the sample Event is:
 ```
 <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
@@ -56,4 +65,39 @@ The XML View of the sample Event is:
   <Data Name="param11">Unavailable</Data> 
  </EventData>
 </Event>
+```
+
+Another example is:
+```
+- <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+- <System>
+  <Provider Name="Microsoft-Windows-DistributedCOM" Guid="{1B562E86-B7AA-4131-BADC-B6F3A001407E}" EventSourceName="DCOM" /> 
+  <EventID Qualifiers="0">10016</EventID> 
+  <Version>0</Version> 
+  <Level>3</Level> 
+  <Task>0</Task> 
+  <Opcode>0</Opcode> 
+  <Keywords>0x8080000000000000</Keywords> 
+  <TimeCreated SystemTime="2024-11-13T00:27:52.1816258Z" /> 
+  <EventRecordID>6773</EventRecordID> 
+  <Correlation /> 
+  <Execution ProcessID="1824" ThreadID="7292" /> 
+  <Channel>System</Channel> 
+  <Computer>Dell</Computer> 
+  <Security UserID="S-1-5-19" /> 
+  </System>
+- <EventData>
+  <Data Name="param1">machine-default</Data> 
+  <Data Name="param2">Local</Data> 
+  <Data Name="param3">Activation</Data> 
+  <Data Name="param4">{C2F03A33-21F5-47FA-B4BB-156362A2F239}</Data> 
+  <Data Name="param5">{316CDED5-E4AE-4B15-9113-7055D84DCC97}</Data> 
+  <Data Name="param6">NT AUTHORITY</Data> 
+  <Data Name="param7">LOCAL SERVICE</Data> 
+  <Data Name="param8">S-1-5-19</Data> 
+  <Data Name="param9">LocalHost (Using LRPC)</Data> 
+  <Data Name="param10">Unavailable</Data> 
+  <Data Name="param11">Unavailable</Data> 
+  </EventData>
+  </Event>
 ```
