@@ -6,8 +6,6 @@
 
 # A sample Event text is:
 # The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID {2593F8B9-4EAF-457C-B68A-50F6B8EA6B54} and APPID {15C20B67-12E7-4BB6-92BB-7AFF07997402} to the user Computer\User SID (S-1-1-12-12345678-123456789-123456789-1234) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool.
-# or
-# The machine-default permission settings do not grant Local Activation permission for the COM Server application with CLSID {C2F03A33-21F5-47FA-B4BB-156362A2F239} and APPID {316CDED5-E4AE-4B15-9113-7055D84DCC97} to the user NT AUTHORITY\LOCAL SERVICE SID (S-1-5-19) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool.
 
 
 # Copyright (C) 2024 Maxim Masiutin. All rights reserved. email: maxim@masiutin.com. https://github.com/maximmasiutin/
@@ -101,11 +99,10 @@ function enable-privilege {
 $dcomissues = @{}
 
 $EVT_MSG1 = "The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID"
-$EVT_MSG2 = "The machine-default permission settings do not grant Local Activation permission for the COM Server application with CLSID"
 
 # Search for System event log ERROR(2) or WARNING(3) entries starting with the specified EVT_MSG
 Get-WinEvent -FilterHashTable @{LogName = 'System'; Level = @(2, 3)} |
-Where-Object { $_.Message -like "$EVT_MSG1*" -or $_.Message -like "$EVT_MSG2*" } |
+Where-Object { $_.Message -like "$EVT_MSG1*" } |
 ForEach-Object {
     # Get CLSID and APPID from the event log entry
     $CLSID = $_.Properties[3].Value
@@ -114,7 +111,7 @@ ForEach-Object {
 }
 
 if ($dcomissues.Count -eq 0) {
-    Write-Host "No System events with levels Error or Warning found that match the specified string (`"$EVT_MSG1`" or `"$EVT_MSG2`")."
+    Write-Host "No System events with levels Error or Warning found that match the specified string ($EVT_MSG1)."
     exit 0
 }
 
