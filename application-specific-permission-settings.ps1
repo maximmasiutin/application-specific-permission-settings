@@ -17,10 +17,6 @@
 
 # This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-
-
-
-
 # ************************* BEGIN enable-privilege
 function enable-privilege {
     param(
@@ -108,7 +104,7 @@ $EVT_MSG1 = "The application-specific permission settings do not grant Local Act
 $EVT_MSG2 = "The machine-default permission settings do not grant Local Activation permission for the COM Server application with CLSID"
 
 # Search for System event log ERROR(2) or WARNING(3) entries starting with the specified EVT_MSG
-Get-WinEvent -FilterHashTable @{LogName = 'System'; Level = @(2, 3) } | Where-Object { $_.Message -like "$EVT_MSG1*" -or $_.Message -like "$EVT_MSG2*"} | ForEach-Object {
+Get-WinEvent -FilterHashTable @{LogName = 'System'; Level = @(2, 3) } | Where-Object { $_.Message -like "$EVT_MSG1*" -or $_.Message -like "$EVT_MSG2*" } | ForEach-Object {
     # Get CLSID and APPID from the event log entry
     # which we'll use to look up keys in the registry
     $CLSID = $_.Properties[3].Value
@@ -133,47 +129,82 @@ Write-Host "Enabled privilege SeRestorePrivilege: $ResultRestorePrivilege"
 $Result = 0
 
 foreach ($CLSID in $dcomissues.keys) {
-    $APPID = $dcomissues[$CLSID]
-    Write-Host "Fixing: CLSID $CLSID, APPID $APPID..."
+    $AppID = $dcomissues[$CLSID]
+    Write-Host "Fixing: CLSID $CLSID, AppID $AppID..."
     try {
-        $key = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey("CLSID\$CLSID", [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree, [System.Security.AccessControl.RegistryRights]::takeownership)
-
-        if ($null -eq $key) {
+        $keyclsid = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey("CLSID\$CLSID", [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree, [System.Security.AccessControl.RegistryRights]::takeownership)
+        $keyappid = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey("AppID\$AppID", [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree, [System.Security.AccessControl.RegistryRights]::takeownership)
+        ## Setting CLSID...
+        if ($null -eq $keyclsid) {
             Write-Host "Unable to get registry key HKCR:\CLSID\$CLSID"
             $Result = 1
         }
         else {
-            Write-Host "Opened registry key $($key.Name)"
+            Write-Host "Opened registry key $($keyclsid.Name)"
             $admin = [System.Security.Principal.NTAccount]"Administrators"
             Write-Host "Setting owner to $($admin.Value)..."
-            $acl = $key.GetAccessControl()
+            $acl = $keyclsid.GetAccessControl()
             $acl.SetOwner($admin)
-            $key.SetAccessControl($acl)
+            $keyclsid.SetAccessControl($acl)
 
-
-	    $fullControl = [System.Security.AccessControl.RegistryRights]::FullControl
+            $fullControl = [System.Security.AccessControl.RegistryRights]::FullControl
             $allow = [System.Security.AccessControl.AccessControlType]::Allow
-	    $inheritance = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+            $inheritance = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
             $propagation = [System.Security.AccessControl.PropagationFlags]::None
 
             Write-Host "Setting Full Control access for $($admin.Value)..."
             $user = [System.Security.Principal.NTAccount]($admin.value)
-            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($user,$fullControl,$inheritance,$propagation, $allow)
+            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($user, $fullControl, $inheritance, $propagation, $allow)
             $acl.SetAccessRule($rule)
-            $key.SetAccessControl($acl)
-
+            $keyclsid.SetAccessControl($acl)
 
             $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
             Write-Host "Setting Full Control access for $me..."
             $user = [System.Security.Principal.NTAccount]($me)
-            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($user,$fullControl,$inheritance,$propagation, $allow)
+            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($user, $fullControl, $inheritance, $propagation, $allow)
             $acl.SetAccessRule($rule)
-            $key.SetAccessControl($acl)
+            $keyclsid.SetAccessControl($acl)
 
-            $key.Close()
+            $keyclsid.Close()
 
             Write-Host "Success."
         }
+        ## Setting AppID...
+        if ($null -eq $keyappid) {
+            Write-Host "Unable to get registry key HKCR:\AppID\$AppID"
+            $Result = 1
+        }
+        else {
+            Write-Host "Opened registry key $($keyappid.Name)"
+            $admin = [System.Security.Principal.NTAccount]"Administrators"
+            Write-Host "Setting owner to $($admin.Value)..."
+            $acl = $keyappid.GetAccessControl()
+            $acl.SetOwner($admin)
+            $keyappid.SetAccessControl($acl)
+
+            $fullControl = [System.Security.AccessControl.RegistryRights]::FullControl
+            $allow = [System.Security.AccessControl.AccessControlType]::Allow
+            $inheritance = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+            $propagation = [System.Security.AccessControl.PropagationFlags]::None
+
+            Write-Host "Setting Full Control access for $($admin.Value)..."
+            $user = [System.Security.Principal.NTAccount]($admin.value)
+            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($user, $fullControl, $inheritance, $propagation, $allow)
+            $acl.SetAccessRule($rule)
+            $keyappid.SetAccessControl($acl)
+
+            $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            Write-Host "Setting Full Control access for $me..."
+            $user = [System.Security.Principal.NTAccount]($me)
+            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($user, $fullControl, $inheritance, $propagation, $allow)
+            $acl.SetAccessRule($rule)
+            $keyappid.SetAccessControl($acl)
+
+            $keyappid.Close()
+
+            Write-Host "Success."
+        }
+
     }
     catch {
         Write-Host $_.Exception | format-list
