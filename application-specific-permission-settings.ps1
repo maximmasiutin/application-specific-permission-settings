@@ -15,6 +15,8 @@
 
 # This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
+$EnableSeTakeOwnershipPrivilege = $false
+
 # ************************* BEGIN enable-privilege
 function enable-privilege {
     param(
@@ -95,13 +97,12 @@ function enable-privilege {
 }
 # ************************* END enable-privilege
 
-
 $dcomissues = @{}
 
 $EVT_MSG1 = "The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID"
 
 # Search for System event log ERROR(2) or WARNING(3) entries starting with the specified EVT_MSG
-Get-WinEvent -FilterHashTable @{LogName = 'System'; Level = @(2, 3)} |
+Get-WinEvent -FilterHashTable @{LogName = 'System'; Level = @(2, 3) } |
 Where-Object { $_.Message -like "$EVT_MSG1*" } |
 ForEach-Object {
     # Get CLSID and APPID from the event log entry
@@ -118,8 +119,91 @@ if ($dcomissues.Count -eq 0) {
 # Enable necessary privileges
 $ResultTakeOwnershipPrivilege = enable-privilege SeTakeOwnershipPrivilege
 $ResultRestorePrivilege = enable-privilege SeRestorePrivilege
-Write-Host "Enabled privilege SeTakeOwnershipPrivilege: $ResultTakeOwnershipPrivilege"
 Write-Host "Enabled privilege SeRestorePrivilege: $ResultRestorePrivilege"
+if ($true -eq $ResultTakeOwnershipPrivilege) {
+    Write-Host "Enabled privilege SeTakeOwnershipPrivilege: $ResultTakeOwnershipPrivilege"
+}
+if ($false -eq $ResultTakeOwnershipPrivilege) {
+
+
+    # Enable the SeTakeOwnershipPrivilege
+    function Enable-SeTakeOwnershipPrivilege {
+        $Definition = @"
+    using System;
+    using System.Runtime.InteropServices;
+
+    public class AdjPriv2 {
+        [DllImport("advapi32.dll", ExactSpelling=true, SetLastError=true)]
+        public static extern bool AdjustTokenPrivileges(
+            IntPtr TokenHandle,
+            bool DisableAllPrivileges,
+            ref TOKEN_PRIVILEGES NewState,
+            int BufferLength,
+            IntPtr PreviousState,
+            IntPtr ReturnLength);
+
+        [DllImport("advapi32.dll", ExactSpelling=true, SetLastError=true)]
+        public static extern bool OpenProcessToken(
+            IntPtr ProcessHandle,
+            int DesiredAccess,
+            ref IntPtr TokenHandle);
+
+        [DllImport("kernel32.dll", ExactSpelling=true)]
+        public static extern IntPtr GetCurrentProcess();
+
+        [DllImport("advapi32.dll", CharSet=CharSet.Auto, SetLastError=true)]
+        public static extern bool LookupPrivilegeValue(
+            string lpSystemName,
+            string lpName,
+            ref LUID lpLuid);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct LUID {
+            public int LowPart;
+            public int HighPart;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct LUID_AND_ATTRIBUTES {
+            public LUID Luid;
+            public int Attributes;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct TOKEN_PRIVILEGES {
+            public int PrivilegeCount;
+            public LUID_AND_ATTRIBUTES Privileges;
+        }
+
+        public const int TOKEN_ADJUST_PRIVILEGES = 0x20;
+        public const int TOKEN_QUERY = 0x8;
+        public const int SE_PRIVILEGE_ENABLED = 0x2;
+        public const string SE_TAKE_OWNERSHIP_NAME = "SeTakeOwnershipPrivilege";
+
+        public static bool Enable() {
+            IntPtr hToken = IntPtr.Zero;
+            TOKEN_PRIVILEGES tkp = new TOKEN_PRIVILEGES();
+            tkp.Privileges = new LUID_AND_ATTRIBUTES();
+            tkp.PrivilegeCount = 1;
+            if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, ref hToken))
+                return false;
+            if (!LookupPrivilegeValue(null, SE_TAKE_OWNERSHIP_NAME, ref tkp.Privileges.Luid))
+                return false;
+            tkp.Privileges.Attributes = SE_PRIVILEGE_ENABLED;
+            return AdjustTokenPrivileges(hToken, false, ref tkp, 0, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+"@
+
+        Add-Type -TypeDefinition $Definition
+        [AdjPriv2]::Enable() 
+    }
+    $EnableSeTakeOwnershipPrivilege = Enable-SeTakeOwnershipPrivilege
+    Write-Host "Enabled privilege SeTakeOwnershipPrivilege: $EnableSeTakeOwnershipPrivilege"
+}
+
+# Print en empty line 
+Write-Host
 
 $Result = 0
 
@@ -131,42 +215,120 @@ function Fix-RegistryPermissions {
     )
 
     try {
-        $regKey = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey($KeyPath, 'ReadWriteSubTree', 'TakeOwnership')
-        if ($null -eq $regKey) {
-            Write-Host "Unable to get registry key HKCR:\$KeyPath"
-            $Result = 1
-            return
+        # Check if the registry key exists
+        $keyExistsHandle = $null
+        $keyExists = $false
+        $errorCheckingExistance = $false
+        try {
+            $keyExistsHandle = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey($KeyPath, 'ReadOnly')
+            if ($null -eq $keyExistsHandle) {
+                Write-Host "Registry key HKCR:\$KeyPath does not exist."
+                $Result = 1
+                return
+            }
+            else {
+                $keyExistsHandle.Close()
+                $keyExists = $true
+            }
+        }
+        catch {
+            Write-Host "Exception occurred while checking existence of registry key HKCR:\$KeyPath" -ForegroundColor Red
+            Write-Host $_.Exception.Message
+            $errorCheckingExistance = $true
         }
 
-        Write-Host "Opened registry key $($regKey.Name)"
+        if ($true -eq $errorCheckingExistance) {
+            try {
+                # Take ownership of the registry key
+    
+                Write-Host "Taking ownership of registry key Registry::HKEY_CLASSES_ROOT\"$KeyPath\"..." 
+                $acl = Get-Acl -Path "Registry::HKEY_CLASSES_ROOT\$KeyPath"
+                $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+                $acl.SetOwner($sid)
+                try {
+                    $securityObject = Set-Acl -Path "Registry::HKEY_CLASSES_ROOT\$KeyPath" -AclObject $acl -PassThru 
+                    if ($securityObject) {
+                        Write-Host "Successfully taken ownership of registry key: Registry::HKEY_CLASSES_ROOT\$KeyPath" -ForegroundColor Green
+                        $keyExists = $true
+                    }
+                }
+                catch {
+                    Write-Host "Exception occurred while taking ownership"
+                    Write-Host $_.Exception.Message
+                }
 
-        $admin = [System.Security.Principal.NTAccount]"Administrators"
-        Write-Host "Setting owner to $($admin.Value)..."
-        $acl = $regKey.GetAccessControl()
-        $acl.SetOwner($admin)
-        $regKey.SetAccessControl($acl)
+            }
+            catch {
+                Write-Host "An error occurred while taking ownership of the registry key Registry::HKEY_CLASSES_ROOT\$KeyPath" -ForegroundColor Red
+                Write-Host $_.Exception.Message -ForegroundColor Red
+                $Result = 1
+                return
+            }
 
-        $fullControl = [System.Security.AccessControl.RegistryRights]::FullControl
-        $allow = [System.Security.AccessControl.AccessControlType]::Allow
-        $inheritance = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
-        $propagation = [System.Security.AccessControl.PropagationFlags]::None
+        }
+       
+        if ($true -eq $keyExists) {
+            # Try to open the registry key with the specified permissions
+            try {
+                $regKey = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey(
+                    $KeyPath,
+                    [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,
+                    [System.Security.AccessControl.RegistryRights]::TakeOwnership -bor [System.Security.AccessControl.RegistryRights]::ChangePermissions
+                )
+                if ($null -eq $regKey) {
+                    Write-Host "Unable to get registry key HKCR:\$KeyPath due to insufficient permissions."
+                    $Result = 1
+                    return
+                }
+                Write-Host "Opened registry key $($regKey.Name)"
+            }
+            catch {
+                Write-Host "Exception occurred while opening registry key HKCR:\$KeyPath"
+                Write-Host $_.Exception.Message
+                $Result = 1
+                return
+            }
 
-        Write-Host "Setting Full Control access for $($admin.Value)..."
-        $rule = New-Object System.Security.AccessControl.RegistryAccessRule($admin, $fullControl, $inheritance, $propagation, $allow)
-        $acl.SetAccessRule($rule)
+            # Define accounts to set permissions for
+            $accounts = @(
+                [System.Security.Principal.NTAccount]"Administrators",
+                [System.Security.Principal.NTAccount]"SYSTEM",
+                [System.Security.Principal.NTAccount]"NT SERVICE\TrustedInstaller",
+                [System.Security.Principal.NTAccount][System.Security.Principal.WindowsIdentity]::GetCurrent().Name  # Current User
+            )
 
-        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-        Write-Host "Setting Full Control access for $currentUser..."
-        $userAccount = [System.Security.Principal.NTAccount]$currentUser
-        $rule = New-Object System.Security.AccessControl.RegistryAccessRule($userAccount, $fullControl, $inheritance, $propagation, $allow)
-        $acl.SetAccessRule($rule)
+            # Get the current ACL
+            $acl = $regKey.GetAccessControl()
 
-        $regKey.SetAccessControl($acl)
-        $regKey.Close()
+            # Set owner to Administrators
+            $admin = [System.Security.Principal.NTAccount]"Administrators"
+            Write-Host "Setting owner to $($admin.Value)..."
+            $acl.SetOwner($admin)
+            $regKey.SetAccessControl($acl)
 
-        Write-Host "Successfully updated permissions for $KeyType key."
-    } catch {
-        Write-Host $_.Exception | Format-List
+            $fullControl = [System.Security.AccessControl.RegistryRights]::FullControl
+            $allow = [System.Security.AccessControl.AccessControlType]::Allow
+            $inheritance = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+            $propagation = [System.Security.AccessControl.PropagationFlags]::None
+
+            foreach ($account in $accounts) {
+                Write-Host "Setting Full Control access for $($account.Value)..."
+                $rule = New-Object System.Security.AccessControl.RegistryAccessRule(
+                    $account, $fullControl, $inheritance, $propagation, $allow
+                )
+                $acl.SetAccessRule($rule)
+            }
+
+            # Apply the updated ACL to the registry key
+            $regKey.SetAccessControl($acl)
+            $regKey.Close()
+
+            Write-Host "Successfully updated permissions for $KeyType key."
+        }
+    }
+    catch {
+        Write-Host "An error occurred while modifying the registry key:"
+        Write-Host $_.Exception.Message
         $Result = 1
     }
 }
@@ -180,6 +342,9 @@ foreach ($CLSID in $dcomissues.Keys) {
 
     # Fix APPID key
     Fix-RegistryPermissions "AppID\$APPID" "APPID"
+
+    # Print an empty line
+    Write-Host
 }
 
 exit $Result
